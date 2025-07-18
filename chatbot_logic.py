@@ -25,6 +25,9 @@ def get_full_chain():
 
     # Database Setup
     password = os.getenv("DB_PASSWORD")
+    if password is None:
+        raise ValueError("Environment  variable DB_PASSWORD is not set.")
+    
     encoded_password = quote_plus(password)
     db_uri = f"mysql+mysqlconnector://root:{encoded_password}@localhost:3306/chatbot_berufungsverfahren"
     # Connect without include_tables first
