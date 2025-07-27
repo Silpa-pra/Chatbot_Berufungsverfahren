@@ -17,8 +17,17 @@ tab1, tab2 = st.tabs(["Login", "Signup"])
 
 with tab1:
     #Allow user to enter either username or email
-    login_identifier = st.text_input('Username or Email', key = 'login_identifier', placeholder = 'Enter a your Username or email')
-    password = st.text_input('Password', type = 'password', key = 'login_password', placeholder = 'Enter your Password')
+    login_identifier = st.text_input(
+        'Username or Email', 
+        key = 'login_identifier', 
+        placeholder = 'Enter a your Username or email'
+        )
+    password = st.text_input(
+        'Password',
+        type = 'password', 
+        key = 'login_password', 
+        placeholder = 'Enter your Password'
+        )
 
     if st.button('Login'):
         if not login_identifier or not password:
@@ -31,9 +40,15 @@ with tab1:
                     st.session_state.logged_in = True
                     st.session_state.current_user = user
                     st.success("Logged in successfully!")
-                    st.switch_page("pages/chatbot.py")
+                    
+                    # based on user type
+                    if user["user_type"] == "HR":
+                        st.switch_page("pages/hr_dashboard.py")
+                    else:
+                        st.switch_page("pages/chatbot.py")
+                        
                 else:
-                    # Simplified and more secure error message
+                    # secure error message
                     st.error("Invalid credentials. Please try again.")
             except Exception as e:
                 st.error(f"Login error: {str(e)}")
@@ -44,11 +59,11 @@ with tab2:
     email = st.text_input('Email Address', key ='signup_email', placeholder = 'mustermann@example.com')
     password = st.text_input('Password', type = 'password', key = 'signup_password', placeholder = 'Enter a Password')
     username = st.text_input('Username', key = 'signup_username', placeholder = 'Enter a unique Username')
-    user_type = st.selectbox('User Type', ['BV', 'HR'], key = 'signup_user_type')
+    user_type = st.selectbox('User Type', ['HR', 'User'], key = 'signup_user_type')
    
     if st.button("Register"):
         if not email or not password or not username or not user_type:
-            st.warning("All fields except department are required!")
+            st.warning("All fields are required!")
         elif '@' not in email:
             st.warning("Please enter a valid email address")
         elif len(password) < 6:
