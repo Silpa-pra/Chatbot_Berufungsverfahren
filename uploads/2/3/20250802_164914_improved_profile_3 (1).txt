@@ -1,0 +1,57 @@
+SUGGESTIONS:
+1. **Add specific job responsibilities**: Outline the day-to-day tasks and responsibilities of the professor to give candidates a clear understanding of the role.
+2. **Include information about the institution's culture and values**: Provide details about the department's and institution's mission, vision, and values to attract candidates who align with these principles.
+3. **Specify the expected level of student interaction**: Clarify the level of student mentorship, advising, and interaction expected of the professor to ensure candidates are comfortable with these responsibilities.
+4. **Provide details about the evaluation and promotion process**: Outline the criteria and process for evaluating and promoting faculty members to help candidates understand the opportunities for growth and advancement.
+5. **Include information about available resources and support**: Describe the resources and support available to faculty members, such as research funding, administrative assistance, and professional development opportunities.
+
+MISSING ELEMENTS:
+- Specific job responsibilities and day-to-day tasks
+- Information about the institution's culture, values, and mission
+- Expected level of student interaction and mentorship
+- Evaluation and promotion process for faculty members
+- Available resources and support for faculty members
+- Opportunities for professional development and growth
+
+IMPROVED VERSION:
+
+**Position Overview**
+The Department of Computer Science at [Institution Name] invites applications for a Professor position in Artificial Intelligence. We are seeking a highly motivated and experienced individual to join our team of faculty members who are passionate about teaching, research, and service. Our department values innovation, collaboration, and community engagement, and we are committed to fostering a culture of inclusivity, respect, and open communication.
+
+**Academic Qualifications**
+- PhD in Computer Science or a related field
+- Strong academic background with a record of publications in top-tier conferences and journals
+- Demonstrated expertise in Artificial Intelligence, with a focus on machine learning, natural language processing, or computer vision
+
+**Professional Experience**
+- Prior teaching experience at the university level is desirable, but not required
+- Industry experience or collaborations in AI are a plus
+- Experience with curriculum development, online teaching platforms, and educational technology is an asset
+- Proven track record of securing research funding and leading research projects
+
+**Research Expectations**
+- Develop and maintain an active research program in Artificial Intelligence, with a focus on [specific area]
+- Publish research in top-tier conferences and journals, with a minimum of 2 publications per year
+- Secure external funding through grants and collaborations, with a target of $200,000 per year
+- Supervise graduate and undergraduate research projects, with a minimum of 2 students per year
+
+**Teaching Responsibilities**
+- Teach undergraduate and graduate courses in computer science, with a focus on Artificial Intelligence
+- Develop and teach new courses to reflect emerging trends and technologies in the field
+- Advise and mentor students on research projects and academic matters, with a minimum of 5 hours of office hours per week
+- Participate in curriculum development and program assessment, with a focus on improving student outcomes and learning experiences
+
+**Required Skills**
+- Excellent teaching and communication skills, with the ability to engage students and facilitate learning
+- Ability to work effectively in a team environment, with a focus on collaboration and mutual respect
+- Strong programming skills and familiarity with relevant software and tools, including Python, Java, and C++
+- Experience with online learning platforms and educational technology, including learning management systems and online grading tools
+
+**Service and Administration**
+- Participate in departmental meetings and service activities, with a minimum of 2 hours per week
+- Contribute to curriculum development and program assessment, with a focus on improving student outcomes and learning experiences
+- Serve on committees and contribute to the governance of the department and institution, with a minimum of 1 committee assignment per year
+- Participate in faculty development and evaluation processes, with a focus on improving teaching and research skills
+
+**Equal Opportunity Statement**
+[Institution Name] is an equal opportunity employer committed to diversity, equity, and inclusion. We welcome applications from qualified candidates of all backgrounds and perspectives. We are committed to creating a welcoming and inclusive environment for all faculty, staff, and students, and we strive to promote a culture of respect, empathy, and understanding.
