@@ -1,18 +1,18 @@
 from typing import Dict, Any, cast
-from db_utils import get_db_connection
+from db_utils import get_db_cursor
+import os
+from datetime import datetime
 
 def get_all_positions(user_id= None, user_type = None):
     """
     Fetches job positions based on user role.
     HR sees all positions, BA only sees assigned positions
     """
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    try:
+    with get_db_cursor() as (conn, cursor):
         if user_type == "HR":
             cursor.execute("""
                 SELECT jp.position_id, jp.position_title, jp.kenziffer, jp.department,
-                       ba.ba_name, bm.is_head  -- ← Make sure ba_name is selected
+                       ba.ba_name, bm.is_head  
                 FROM job_positions jp
                 LEFT JOIN berufungsausschuss ba ON jp.ba_id = ba.ba_id
                 LEFT JOIN ba_members bm ON ba.ba_id = bm.ba_id
@@ -21,7 +21,7 @@ def get_all_positions(user_id= None, user_type = None):
         else:
             cursor.execute("""
                 SELECT jp.position_id, jp.position_title, jp.kenziffer, jp.department,
-                       ba.ba_name, bm.is_head  -- ← Make sure ba_name is selected
+                       ba.ba_name, bm.is_head  
                 FROM job_positions jp
                 JOIN ba_members bm ON jp.ba_id = bm.ba_id
                 JOIN berufungsausschuss ba ON jp.ba_id = ba.ba_id
@@ -29,23 +29,14 @@ def get_all_positions(user_id= None, user_type = None):
             """, (user_id,))  
              
         return cursor.fetchall()
-    except Exception as e:
-        print(f"Error fetching positions: {e}")
-        return []
-    finally:
-        cursor.close()
-        conn.close()
-        
+    
 def get_full_procedure_data(user_id: int, position_id: int):
     """
     Get comprehensive status information including current step & all related data.
     Returns everything needed for both chatbot response & interactive checklist. 
     """
     
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    
-    try:
+    with get_db_cursor() as (conn, cursor):
         # get all tasks with their progress for this position
         query = """
             SELECT
@@ -58,7 +49,6 @@ def get_full_procedure_data(user_id: int, position_id: int):
                 ps.step_id,
                 ps.step_title,
                 ps.step_order,
-                ps.responsible_user_type,
                 ps.link_url as step_link,
                 st.task_id,
                 st.task_description,
@@ -89,15 +79,7 @@ def get_full_procedure_data(user_id: int, position_id: int):
         status_data = analyze_user_progress(all_tasks) 
         
         return status_data
-    
-    except Exception as e:
-        print(f"Error getting comprehensive user status:{e}")
-        return None
-    finally:
-        cursor.close()
-        conn.close()
-        
-
+       
 def analyze_user_progress(all_tasks):
     """
     Analyzes all tasks to provide comprehensive progress information.
@@ -138,12 +120,22 @@ def analyze_user_progress(all_tasks):
                 'phase_order': task['phase_order'],
                 'step_title': task['step_title'],
                 'step_order': task['step_order'],
-                'responsible_user_type': task['responsible_user_type'],
                 'step_link': task['step_link'],
                 'tasks': []
             }
+        
+        task_dict = {
+            'task_id' : task.get('task_id'),
+            'task_description': task.get('task_description'),
+            'task_order': task.get('task_order'),
+            'required_documents': task.get('required_documents'),
+            'task_link': task.get('task_link'),
+            'task_status': task.get('task_status', 'not_started'),
+            'completed_at': task.get('completed_at'),
+            'notes': task.get('notes')
+            }
             
-        all_steps[step_id]['tasks'].append(task)
+        all_steps[step_id]['tasks'].append(task_dict)
         phases[phase_id]['steps'][step_id] = all_steps[step_id]
         
     
@@ -200,26 +192,17 @@ def update_task_status(user_id: int, position_id: int, task_id: int, new_status:
     """
     Update the status of a specific task for a user
     """
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    query = """
+    with get_db_cursor() as (conn, cursor):
+        query = """
         INSERT INTO user_progress (user_id, position_id, task_id, status, completed_at)
         VALUES (%s, %s, %s, %s, CASE WHEN %s = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END)
-        ON DUPLICATE KEY UPDATE 
-            status = VALUES(status), 
-            completed_at = VALUES(completed_at);
-    """
-    try:
+        ON DUPLICATE KEY UPDATE status = VALUES(status), 
+        completed_at = VALUES(completed_at);
+        """ 
         cursor.execute(query, (user_id, position_id, task_id, new_status, new_status))
         conn.commit()
         return True
-    except Exception as e:
-        print(f"Error updating task status: {e}")
-        return False
-    finally:
-        cursor.close()
-        conn.close()
+   
         
 def create_chat_session(user_id, position_id):
     """
@@ -233,17 +216,13 @@ def create_chat_session(user_id, position_id):
     int: The auto generated session_id for the new session.
     """
     
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
+    with get_db_cursor() as (conn, cursor):
         cursor.execute("""
                        INSERT INTO chat_sessions(user_id, position_id)
                        VALUES(%s, %s)""", (user_id, position_id))
         conn.commit()
         return cursor.lastrowid
-    finally: 
-        cursor.close()
-        conn.close()
+   
 
 def save_chat_message(session_id, sender_type, message_text):
     """
@@ -257,17 +236,12 @@ def save_chat_message(session_id, sender_type, message_text):
     return:
         None
     """
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
+    with get_db_cursor() as (conn, cursor):
         cursor.execute("""
                        INSERT INTO chat_messages(session_id, sender_type, message_text)
                        VALUES (%s, %s, %s)""", (session_id, sender_type, message_text))
         conn.commit()
-    finally:
-        cursor.close()
-        conn.close()
+    
         
 def get_chat_history(user_id, position_id, limit=50):
     """
@@ -281,9 +255,7 @@ def get_chat_history(user_id, position_id, limit=50):
     return:
         list[dict]: messages with sender_type, message_text, created_at.
     """
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    try:
+    with get_db_cursor() as (conn, cursor):
         cursor.execute("""
                        SELECT cm.sender_type, cm.message_text, cm.created_at
                        FROM chat_sessions cs
@@ -292,100 +264,270 @@ def get_chat_history(user_id, position_id, limit=50):
                        ORDER BY cm.created_at DESC
                        LIMIT %s""", (user_id, position_id, limit))
         return cursor.fetchall()
-    finally:
-        conn.close()
-        cursor.close()
-        
-def get_next_step_preview(status_data, num_steps: int = 2):
-    """
-    Gets a Preview  of the next few steps.
-    """
-    if not status_data or not status_data['current_step']:
-        return[]
     
-    current_step_id = status_data['current_step']['step_id']
-    all_steps = status_data['all_steps']
-    
-    #Find current step index
-    current_index = None
-    for i, step in enumerate(all_steps):
-        if step['step_id']== current_step_id:
-            current_index = 1
-            break
-        
-        if current_index is None:
-            return[]
-        
-        #Get next steps
-        next_steps = []
-        for i in range(current_index +1, min(current_index+1+num_steps, len(all_steps))):
-            next_steps.append(all_steps[i])
+
+def initialize_shared_progress(position_id):
+    """ Inititalize shared progress for a position when first accessed"""
+       
+    try:
+        with get_db_cursor() as (conn,cursor):
+            # check if records already exist
+            cursor.execute("""
+                           SELECT COUNT(*) as count FROM ba_shared_progress
+                           WHERE position_id = %s
+                           """, (position_id,))
             
-        return next_steps
-
-def detect_status_question(user_input: str):
-    """
-    Detects 
-    """
-    possible_keywords =[
-        'status',  'progress', 'next', 'step', 'task', 'completed', 'done',
-        'where am i', 'current', 'phase', 'what do i need', 'what should i do',
-        'what\'s next', 'overview', 'todo', 'procedure', 'checklist',
-        'tasks', 'remaining', 'pending', 'finished'
-    ]
-    
-    return any(keyword in user_input.lower() for keyword in possible_keywords)
-
-def detect_task_help_request(user_input:str):
-    """
-    Detect
-    """
-    help_keywords = [
-        'help me with', 'explain', 'simplify', 'what does this mean',
-        'help with task', 'help with current', 'break down', 'clarify',
-        "don't understand", 'confused about', 'guide me', 'assist with', 'help me understand'
-    ]
-    
-    user_input_lower = user_input.lower()
-    
-    return any(keyword in user_input_lower for keyword in help_keywords)
-
-def generate_chatbot_response(status_data):
-    """
-    Generate
-    """
-    if not status_data or not status_data['current_step']:
-        return "I couldn't find any procedure data for this job position."
-    
-    current_step = status_data['current_step']
-    progress= status_data['progress']
-    procedure_title = status_data['procedure_info']['procedure_title']
-    
-    # Build concise response focused on guidance
-    response = f"##Status: {procedure_title}\n\n"
-    
-    #Current location in process
-    response +=f"** You are currently in: **\n"
-    response +=f"Phase:{current_step['phase_title']}\n"
-    response += f"Step: {current_step['step_title']}\n\n"
-    
-    #Progress summary
-    response += f"** Progress:**\n"
-    response += f"Overall: {progress['completed_tasks']}/{progress['total_tasks']} tasks({progress['percentage']:.1f}%)\n"
-    response += f"Current step: {progress['current_step_completed']}/{progress['current_step_total']} tasks({progress['current_step_percentage']:.1f}%)\n\n"
-    
-    
-    #Guidance based on current sttus
-    if progress['current_step_completed']== progress['current_step_total']:
-        response +="**This step is completed!!** You can proceed to next step. \n\n"
-    else:
-        remaining = progress['current_step_total'] - progress['current_step_completed']
-        response+=f"**{remaining} tasks remaining in this step.**\n\n"
+            result = cursor.fetchone()
+            if result and result.get('count', 0) > 0:
+                return True  # Already initialized
+            
+            # Get ba_id and all tasks for this position
+            cursor.execute("""
+                           SELECT jp.ba_id, st.task_id
+                           FROM job_positions jp
+                           JOIN procedures p ON jp.procedure_id = p.procedure_id
+                           JOIN procedure_phases ph ON p.procedure_id = ph.procedure_id
+                           JOIN procedure_steps ps ON ph.phase_id = ps.phase_id
+                           JOIN step_tasks st ON ps.step_id = st.step_id
+                           WHERE jp.position_id = %s
+                           """, (position_id,))
         
-    #Quick response guidance
-    response += "**Use the checklist on the right ot mark tasks as completed.**"
+        results = cursor.fetchall()
+        if not results:
+            return False
+            
+        ba_id = results[0].get('ba_id')
+        
+        # Insert initial records for all tasks
+        for row in results:
+            task_id = row.get('task_id')
+            cursor.execute("""
+                INSERT IGNORE INTO ba_shared_progress (position_id, task_id, ba_id, status)
+                VALUES (%s, %s, %s, 'not_started')
+            """, (position_id, task_id, ba_id))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error initializing shared progress: {e}")
+        return False
     
-    return response
+def get_shared_procedure_data(position_id):
+    """ Get procedure data with shared progress """
+    
+    initialize_shared_progress(position_id)
+    
+    try:
+        with get_db_cursor() as (conn, cursor):
+            query = """
+            SELECT p.procedure_title,
+                p.grundlage,
+                ph.phase_id,
+                ph.phase_title,
+                ph.phase_order,
+                ph.link_url as phase_link,
+                ps.step_id,
+                ps.step_title,
+                ps.step_order,
+                ps.link_url as step_link,
+                st.task_id,
+                st.task_description,
+                st.task_order,
+                st.required_documents,
+                st.link_url as task_link,
+                COALESCE(bsp.status, 'not_started') as task_status,
+                bsp.completed_at,
+                bsp.notes
+            FROM job_positions jp
+            JOIN procedures p ON jp.procedure_id = p.procedure_id
+            JOIN procedure_phases ph ON p.procedure_id = ph.procedure_id
+            JOIN procedure_steps ps ON ph.phase_id = ps.phase_id
+            JOIN step_tasks st ON ps.step_id = st.step_id
+            LEFT JOIN ba_shared_progress bsp ON st.task_id = bsp.task_id AND bsp.position_id = jp.position_id
+            LEFT JOIN users u ON bsp.completed_by_user_id = u.user_id  
+            WHERE jp.position_id = %s 
+            ORDER BY ph.phase_order, ps.step_order, st.task_order 
+            """
+            
+            cursor.execute(query,(position_id,))
+            all_tasks = cursor.fetchall()
+            
+            if not all_tasks:
+                return None
+            
+            return analyze_user_progress(all_tasks)
+        
+    except Exception as e:
+        print(f"Error getting shared procedure data:{e}")
+        return None
+
+def update_shared_task_status(position_id, task_id, new_status, user_id, username, notes= None):
+    """ Update shared task status"""
+    
+    try:
+        with get_db_cursor() as (conn, cursor):
+            # get the ba_id for this position
+            cursor.execute("""
+                           SELECT ba_id FROM job_positions WHERE position_id = %s
+                           """, (position_id,))
+            result = cursor.fetchone()
+            if not result:
+                print(f"No job position found for position_id:{position_id}")
+                return False
+            
+            ba_id = result.get('ba_id')
+            
+            query = """
+            INSERT INTO ba_shared_progress(position_id, task_id, ba_id, status, completed_by_user_id, notes, completed_at)
+            VALUES (%s, %s, %s, %s, %s, %s, CASE WHEN %s = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END)
+            ON DUPLICATE KEY UPDATE 
+            status = VALUES(status),
+            completed_by_user_id = VALUES(completed_by_user_id),
+            notes = VALUES(notes),
+            completed_at = VALUES(completed_at)
+            """
+            cursor.execute(query, (position_id, task_id, ba_id, new_status, user_id, notes, new_status))
+                
+            cursor.execute("""
+            INSERT INTO user_progress (user_id, position_id, task_id, status, notes, completed_at)
+            VALUES (%s, %s, %s, %s, %s, CASE WHEN %s = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END)
+            ON DUPLICATE KEY UPDATE 
+            status = VALUES(status), 
+            notes = VALUES(notes),
+            completed_at = VALUES(completed_at)
+            """,(user_id, position_id, task_id, new_status, notes, new_status) )
+            
+            conn.commit()
+            
+            if cursor.rowcount == 0:
+                print(f"No rows affected when updating task{task_id} for position {position_id}")
+                return False
+            return True
+        
+    except Exception as e:
+        print(f"Error updating shared task status:{e}")
+        return False
 
 
+    
+def save_document_upload(user_id, position_id, task_id, uploaded_file):
+    """
+    Save uploaded .txt document to file system and record in database
+    
+    Args:
+        user_ID: ID of user uploading the document
+        position_id: Id of the position
+        task_id : Id of the task requiring the document
+        uploaded_file: Streamlit UploadeddFile object
+    Returns:
+        bool: True if successful, otherwise False 
+        
+    """
+    try:
+        upload_dir = os.path.join("uploads", str(position_id), str(task_id))
+        os.makedirs(upload_dir, exist_ok = True)
+        
+        # Generate unique filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{timestamp}_{uploaded_file.name}"
+        file_path = os.path.join(upload_dir, filename)
+        
+        # Save file to disk
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+            
+        # Save record to database
+        with get_db_cursor() as (conn, cursor):
+            cursor.execute("""
+                           INSERT INTO document_uploads(
+                               user_id, position_id, task_id, original_filename, file_path)
+                               VALUES(%s, %s, %s, %s, %s)
+                            """, (user_id, position_id, task_id, uploaded_file.name, file_path))
+            conn.commit()
+            return True  
+    
+    except Exception as e:
+        print(f"Error saving document: {e}")
+        return False
 
+def get_uploaded_document(task_id, position_id):
+    """
+    Get information about uploaded document for a task
+    
+    Args:
+        task_id: Id of the task
+        position_id : Id of the position
+        
+    Returns:
+        dict: Document information or None if not found
+    """
+    
+    try:
+        with get_db_cursor()  as (conn, cursor):
+            cursor.execute("""
+                           SELECT du.upload_id,
+                           du.original_filename,
+                           du.file_path,
+                           u.username
+                           FROM document_uploads du
+                           JOIN users u ON du.user_id = u.user_id
+                           WHERE du.task_id = %s AND du.position_id = %s
+                           ORDER BY du.upload_id DESC
+                           LIMIT 1
+                           """, (task_id, position_id))
+            return cursor.fetchone()
+    except Exception as e:
+        print(f"Error getting document:{e}")
+        return None
+
+def read_uploaded_document(task_id, position_id):
+    """
+    Read the content of an uploaded document
+    
+    Args:
+        task_id: Id of the task
+        position_id: Id of the position
+        
+    Returns:
+        str: File content or None if not found/error
+    """
+    try:
+        doc_info = get_uploaded_document(task_id,position_id)
+        if doc_info and doc_info.get('file_path'):
+            with open(doc_info['file_path'], 'r', encoding = 'utf-8') as f:
+                return f.read()
+            return None
+    except Exception as e:
+        print(f"Error reading document:{e}")
+        return None
+    
+def delete_uploaded_doc(task_id, position_id):
+    try:
+        with get_db_cursor() as (conn, cursor):
+            # get file path
+            cursor.execute("""
+                           SELECT file_path FROM document_uploads
+                           WHERE task_id = %s AND position_id = %s 
+                           """, (task_id, position_id))
+            row = cursor.fetchone()
+            
+            if row:
+                file_path = row['file_path']
+                
+                # delete file 
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    
+                # delete db record
+                cursor.execute("""
+                               DELETE FROM document_uploads
+                               WHERE task_id=%s AND position_id = %s
+                               """, (task_id, position_id))
+                conn.commit()
+                return True
+            return False
+    except Exception as e:
+        print(f"Error deleting document:{e}")
+        return False
+                
+                
