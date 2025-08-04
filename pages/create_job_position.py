@@ -48,30 +48,32 @@ if "position_created" in st.session_state and st.session_state.position_created:
         data = st.session_state.created_position_data
         st.markdown("### Created Position Summary")
         
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.write(f"**Position Details:**")
-            st.write("- **Title:** {data['position_title']}")
-            st.write("- **Department:** {data['department']}")
-            st.write("- **Reference:** {data['kenziffer']}")       
-            st.write("- **Position ID:** {data['position_id']}")      
+            with st.container(border=True):
+                st.markdown("#### Position Details")
+                st.markdown(f"**Title:** {data['position_title']}")
+                st.markdown(f"**Department:** {data['department']}")
+                st.markdown(f"**Reference:** {data['kenziffer']}")
+                st.markdown(f"**Position ID:** #{data['position_id']}")
         
         with col2:
-            st.info(f""" 
-                    **BA Committee:**
-                    -**Name:** {data['ba_name']}
-                    -**BA ID:** {data['ba_id']}
-                    -**Members:**{len(data['members'])}selected
-                    -**Head:**{data['ba_head_name']}
-                    """)
+            with st.container(border=True):
+                st.markdown("#### BA Committee")
+                st.markdown(f"**Name:** {data['ba_name']}")
+                st.markdown(f"**BA ID:** #{data['ba_id']}")
+                st.markdown(f"**Members:** {len(data['members'])} selected")
+                st.markdown(f"**Head:** {data['ba_head_name']}")
             
         #member list
-        st.markdown("**BA Members:**")
-        for member in data['members']:
-            if member['is_head']:
-                st.markdown(f"**{member['username']} ({member['email']})** - *Head*")
-            else:
-                st.markdown(f"{member['username']} ({member['email']})")
+        with col3:
+            with st.container(border=True):
+                st.markdown("**BA Members:**")
+                for member in data['members']:
+                    if member['is_head']:
+                        st.markdown(f"**{member['username']} ({member['email']})** - **Head**")
+                    else:
+                        st.markdown(f"{member['username']} ({member['email']})")
                 
     
     # action button
@@ -220,7 +222,7 @@ if st.session_state.form_step >= 2:
         # Final submission
         st.divider()
         
-        col1, col2 = st.columns([1, 1]) 
+        col1, col2 = st.columns(2) 
         with col1:
             if st.button("<- Back to Edit", use_container_width=True):
                 st.session_state.form_step=1
@@ -272,9 +274,39 @@ if st.session_state.form_step >= 2:
         st.warning(f" Please select at least 2 members. Currently selected: {len(selected_user_ids)}")
     
 
-    # Helper info
-    st.divider()
-    st.caption("- All fields marked with * are required")
-    st.caption("- Kenziffer must be unique across all positions")
-    st.caption("- BA committees need at least 2 members")
-    st.caption("- One member must be designated as head")
+with st.sidebar:
+    st.header("Position Creation Guide")
+    
+    st.markdown("### Overview")
+    st.info("""
+            This form creates a new job position with an assigned 
+    Berufungsausschuss (BA) committee in one streamlined process.
+            """)
+    st.markdown("---")
+    
+    st.markdown(""" 
+                **1. Position Details**
+                - Enter job title and department
+                - Assign unique refrence number
+                - Select hiring procedure template
+                - Name the BA committee
+                
+                **2. BA Member Selection**
+                - Choose committee members
+                - Minimum 2 members required
+                - Designated one member as head
+                - Head leads the committee
+                
+                **3. Review & Create**
+                - Verify all information
+                - Confim Selections
+                - Create position & committee
+                """)
+    st.markdown("### Requirements")
+    st.warning("""
+    **Before creating a position:**
+    - At least one procedure template must exist
+    - At least 2 users with 'User' role must be available
+    - Kenziffer must be unique
+    - All fields marked with * are required
+    """)
